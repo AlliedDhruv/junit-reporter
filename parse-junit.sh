@@ -180,6 +180,29 @@ if github_output:
     with open(github_output, "a") as f:
         f.write(f"summary={json.dumps(summary)}\n")
 
+summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+if summary_file:
+    with open(summary_file, "a", encoding="utf-8") as f:
+        f.write("# 📊 Test Results Summary\n\n")
+        f.write(f"- Total Tests: {total_tests}\n")
+        f.write(f"- ✅ Passed: {passed_tests}\n")
+        f.write(f"- ❌ Failed: {failed_tests}\n")
+        f.write(f"- ⚠️ Errors: {errors_tests}\n")
+        f.write(f"- ⊘ Skipped: {skipped_tests}\n")
+        f.write(f"- ⏱️ Time: {total_time:.2f}s\n\n")
+
+        if total_tests > 0:
+            f.write(f"**Pass Rate:** {(passed_tests / total_tests * 100):.1f}%\n\n")
+
+        # Failed test preview
+        if failed_cases:
+            f.write("## ❌ Failed Tests (Top 5)\n")
+            for case in failed_cases[:5]:
+                f.write(f"- `{case['class']}.{case['name']}`\n")
+
+with open(summary_file, "a", encoding="utf-8") as f:
+    f.write(''.join(markdown))
+
 PYTHON_SCRIPT
 
 # Final check
