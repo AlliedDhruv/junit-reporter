@@ -1,0 +1,36 @@
+name: 'JUnit Test Reporter'
+author: 'Your Name'
+description: 'Parse JUnit XML files and display custom test results layout with beautiful markdown formatting'
+
+branding:
+  icon: 'check-circle'  # or 'alert-circle', 'bar-chart'
+  color: 'blue'         # or 'green', 'red', 'yellow'
+
+inputs:
+  junit-xml-path:
+    description: 'Path to the JUnit XML file (e.g., test-results.xml)'
+    required: true
+    default: './test-results.xml'
+  
+  annotation-style:
+    description: 'Style for annotations: notice, warning, or error'
+    required: false
+    default: 'notice'
+
+outputs:
+  test-summary:
+    description: 'Summary of test results (JSON format)'
+    value: ${{ steps.parse-tests.outputs.summary }}
+  
+  results-markdown:
+    description: 'Test results as markdown'
+    value: ${{ steps.parse-tests.outputs.markdown }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Parse JUnit XML and Display Results
+      id: parse-tests
+      shell: bash
+      run: |
+        ${{ github.action_path }}/parse-junit.sh "${{ inputs.junit-xml-path }}" "${{ inputs.annotation-style }}"

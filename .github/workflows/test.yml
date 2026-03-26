@@ -1,0 +1,330 @@
+name: Test JUnit Reporter Action
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # 2. Create sample test results directory
+      - name: Create test results directory
+        run: mkdir -p test-results
+      
+      # 3. Generate sample JUnit XML file for testing
+      - name: Create sample JUnit XML
+        run: |
+          cat > test-results/sample-tests.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites name="Sample Test Suite" tests="12" failures="2" errors="1" skipped="1" time="5.234">
+            <testsuite name="CalculatorTests" tests="5" failures="1" errors="0" skipped="0" time="2.123" timestamp="2024-03-25T10:15:30">
+              <testcase name="testAddition" classname="com.example.CalculatorTest" time="0.234"/>
+              <testcase name="testSubtraction" classname="com.example.CalculatorTest" time="0.189"/>
+              <testcase name="testMultiplication" classname="com.example.CalculatorTest" time="0.156">
+                <failure type="AssertionError" message="Expected 6 but was 5">
+          java.lang.AssertionError: Expected 6 but was 5
+            at com.example.CalculatorTest.testMultiplication(CalculatorTest.java:45)
+            at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+                </failure>
+              </testcase>
+              <testcase name="testDivision" classname="com.example.CalculatorTest" time="0.234"/>
+              <testcase name="testDivisionByZero" classname="com.example.CalculatorTest" time="0.310">
+                <skipped message="Test skipped for now"/>
+              </testcase>
+            </testsuite>
+            
+            <testsuite name="StringUtilTests" tests="4" failures="1" errors="1" skipped="0" time="1.567" timestamp="2024-03-25T10:15:32">
+              <testcase name="testTrim" classname="com.example.StringUtilTest" time="0.123"/>
+              <testcase name="testReverse" classname="com.example.StringUtilTest" time="0.145"/>
+              <testcase name="testToUpperCase" classname="com.example.StringUtilTest" time="0.234">
+                <failure type="AssertionError" message="Expected 'HELLO' but was 'hello'">
+          java.lang.AssertionError: Expected 'HELLO' but was 'hello'
+            at com.example.StringUtilTest.testToUpperCase(StringUtilTest.java:28)
+            at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+                </failure>
+              </testcase>
+              <testcase name="testSplit" classname="com.example.StringUtilTest" time="0.189">
+                <error type="NullPointerException" message="String cannot be null">
+          java.lang.NullPointerException: String cannot be null
+            at com.example.StringUtil.split(StringUtil.java:15)
+            at com.example.StringUtilTest.testSplit(StringUtilTest.java:56)
+            at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+                </error>
+              </testcase>
+            </testsuite>
+            
+            <testsuite name="UserServiceTests" tests="3" failures="0" errors="0" skipped="0" time="1.544" timestamp="2024-03-25T10:15:34">
+              <testcase name="testCreateUser" classname="com.example.UserServiceTest" time="0.512"/>
+              <testcase name="testFindUserById" classname="com.example.UserServiceTest" time="0.456"/>
+              <testcase name="testDeleteUser" classname="com.example.UserServiceTest" time="0.576"/>
+            </testsuite>
+          </testsuites>
+          EOF
+      
+      # 4. Test the action with sample XML
+      - name: Test JUnit Reporter Action
+        uses: ./
+        with:
+          junit-xml-path: './test-results/sample-tests.xml'
+          annotation-style: 'notice'
+      
+      # 5. Verify the report was generated
+      - name: Verify Report Generated
+        run: |
+          if [ ! -f "junit-report.md" ]; then
+            echo "❌ Error: junit-report.md was not generated"
+            exit 1
+          fi
+          echo "✅ Report generated successfully"
+          echo "---"
+          echo "Report Preview:"
+          echo "---"
+          head -50 junit-report.md
+          echo ""
+          echo "---"
+          echo "Full report length: $(wc -l < junit-report.md) lines"
+      
+      # 6. Check report contains expected content
+      - name: Validate Report Content
+        run: |
+          if ! grep -q "Test Results Report" junit-report.md; then
+            echo "❌ Report missing title"
+            exit 1
+          fi
+          
+          if ! grep -q "✅ Passed" junit-report.md; then
+            echo "❌ Report missing passed tests section"
+            exit 1
+          fi
+          
+          if ! grep -q "❌ Failed" junit-report.md; then
+            echo "❌ Report missing failed tests section"
+            exit 1
+          fi
+          
+          echo "✅ All expected report sections found"
+      
+      # 7. Display the full report
+      - name: Display Full Report
+        if: always()
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "GENERATED JUNIT REPORT"
+          echo "═══════════════════════════════════════════════════════════"
+          cat junit-report.md
+          echo ""
+          echo "═══════════════════════════════════════════════════════════"
+      
+      # 8. Upload report as artifact for inspection
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: junit-test-report
+          path: junit-report.md
+          retention-days: 30
+      
+      # 9. (Optional) Test with real Maven project - if you have one
+      # - name: Setup Java (if testing with Maven)
+      #   uses: actions/setup-java@v3
+      #   with:
+      #     java-version: '11'
+      #     distribution: 'temurin'
+      # 
+      # - name: Run Maven tests (if applicable)
+      #   run: mvn clean test
+      #   continue-on-error: true
+      # 
+      # - name: Report Maven Results
+      #   if: always()
+      #   uses: ./
+      #   with:
+      #     junit-xml-path: './target/surefire-reports/TEST-*.xml'
+
+  # Optional: Test with actual Maven build
+  test-with-maven:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      
+      # Create a simple test project if one doesn't exist
+      - name: Create sample Maven project
+        run: |
+          mkdir -p sample-maven-project/src/test/java
+          cat > sample-maven-project/pom.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <project>
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>com.example</groupId>
+            <artifactId>sample-test</artifactId>
+            <version>1.0</version>
+            
+            <dependencies>
+              <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>4.13.2</version>
+                <scope>test</scope>
+              </dependency>
+            </dependencies>
+            
+            <build>
+              <plugins>
+                <plugin>
+                  <groupId>org.apache.maven.plugins</groupId>
+                  <artifactId>maven-surefire-plugin</artifactId>
+                  <version>2.22.2</version>
+                </plugin>
+              </plugins>
+            </build>
+          </project>
+          EOF
+      
+      - name: Create sample test class
+        run: |
+          cat > sample-maven-project/src/test/java/SampleTest.java << 'EOF'
+          import org.junit.Test;
+          import static org.junit.Assert.*;
+          
+          public class SampleTest {
+            @Test
+            public void testPass1() {
+              assertTrue(true);
+            }
+            
+            @Test
+            public void testPass2() {
+              assertEquals(2, 1 + 1);
+            }
+            
+            @Test
+            public void testPass3() {
+              assertNotNull("String");
+            }
+          }
+          EOF
+      
+      # Run tests
+      - name: Run Maven tests
+        run: cd sample-maven-project && mvn clean test
+        continue-on-error: true
+      
+      # Report results
+      - name: Report Maven Test Results
+        if: always()
+        uses: ./
+        with:
+          junit-xml-path: './sample-maven-project/target/surefire-reports/TEST-*.xml'
+          annotation-style: 'warning'
+      
+      # Upload report
+      - name: Upload Maven Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: maven-test-report
+          path: junit-report.md
+
+  # Optional: Test with Jest/Node.js
+  test-with-jest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      # Create a simple Node test project
+      - name: Create sample Jest project
+        run: |
+          mkdir -p sample-jest-project
+          cat > sample-jest-project/package.json << 'EOF'
+          {
+            "name": "sample-jest",
+            "version": "1.0.0",
+            "scripts": {
+              "test": "jest --reporters=default --reporters=jest-junit"
+            },
+            "devDependencies": {
+              "jest": "^29.0.0",
+              "jest-junit": "^15.0.0"
+            }
+          }
+          EOF
+      
+      - name: Create sample test file
+        run: |
+          mkdir -p sample-jest-project
+          cat > sample-jest-project/sample.test.js << 'EOF'
+          describe('Math functions', () => {
+            test('addition works', () => {
+              expect(1 + 1).toBe(2);
+            });
+            
+            test('subtraction works', () => {
+              expect(5 - 3).toBe(2);
+            });
+            
+            test('multiplication works', () => {
+              expect(3 * 4).toBe(12);
+            });
+          });
+          EOF
+      
+      - name: Install dependencies
+        run: cd sample-jest-project && npm install
+        continue-on-error: true
+      
+      - name: Run Jest tests
+        run: cd sample-jest-project && npm test
+        continue-on-error: true
+      
+      - name: Report Jest Results
+        if: always()
+        uses: ./
+        with:
+          junit-xml-path: './sample-jest-project/junit.xml'
+          annotation-style: 'error'
+      
+      - name: Upload Jest Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: jest-test-report
+          path: junit-report.md
+
+  # Summary job
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [test-action, test-with-maven, test-with-jest]
+    if: always()
+    
+    steps:
+      - name: All tests completed
+        run: |
+          echo " Test Action - Completed"
+          echo " Maven Tests - Completed"
+          echo " Jest Tests - Completed"
+          echo ""
+          echo "📊 All test suites have been executed and reported"
+          echo "📁 Check artifacts for generated reports"
