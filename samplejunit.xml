@@ -1,0 +1,23 @@
+<testsuites>
+  <testsuite name="ExampleSuite" tests="3" failures="1" errors="1" skipped="1" time="0.123">
+    
+    <testcase classname="auth.login" name="should login user" time="0.01"/>
+    
+    <testcase classname="auth.login" name="should fail login" time="0.02">
+      <failure message="Invalid credentials">
+        Expected status 200 but got 401
+      </failure>
+    </testcase>
+    
+    <testcase classname="auth.signup" name="should throw error" time="0.03">
+      <error message="Database error">
+        Connection timeout
+      </error>
+    </testcase>
+    
+    <testcase classname="auth.logout" name="should skip logout" time="0.01">
+      <skipped/>
+    </testcase>
+
+  </testsuite>
+</testsuites>
