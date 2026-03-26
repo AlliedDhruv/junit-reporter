@@ -126,7 +126,7 @@ jobs:
       # 8. Upload report as artifact for inspection
       - name: Upload Test Report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: junit-test-report
           path: junit-report.md
